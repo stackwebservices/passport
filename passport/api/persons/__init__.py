@@ -1,9 +1,12 @@
 # coding: utf-8
-from flask import Blueprint, jsonify, request
-from flask_restful import Api, Resource
+import json
 
-from .service import generate_jwt
-from ...extensions import oauth
+from flask import Blueprint, jsonify, request, make_response
+from flask_restful import Api, Resource
+from jose.exceptions import JWSError
+
+from ...extensions import sentinel, oauth, store
+
 
 blueprint = Blueprint(
     'api', __name__, url_prefix='/api')
@@ -11,10 +14,8 @@ blueprint = Blueprint(
 api = Api(blueprint)
 
 
-@api.resource('/me')
+@api.resource('/person')
 class PersonResource(Resource):
 
-    @oauth.require_oauth()
-    def get(self):
-        user = request.oauth.user
-        return jsonify({'jwt': generate_jwt(user)})
+    def post(self):
+        pass

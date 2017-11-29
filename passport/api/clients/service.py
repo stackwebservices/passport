@@ -7,27 +7,30 @@ from ...models import Client, Grant
 from ..users.service import current_user
 
 
-def create_client(name, redirect_uris):
-    client = Client(
-        name=name,
-        client_id=gen_salt(40),
-        client_secret=gen_salt(50),
-        _redirect_uris=redirect_uris,
-        _default_scopes='email',
-        user_id=1
-    )
-    db.session.add(client)
-    db.session.commit()
+def list_clients(client_id=None):
+    query = Client.query
+    query = query.filter_by(id=client_id) if client_id else query
+    return query.all()
+    
+
+def create_client_credentials(client, persist_to_db=True):
+    client.client_id=gen_salt(40)
+    client.client_secret=gen_salt(50)
+    
+    if persist_to_db:
+        client._default_scopes='email'
+        client.user_id=1
+        db.session.add(client)
+        db.session.commit()
 
     return client
 
 
 def reset_credentials(name):
     client = Client.query.filter_by(name=name).first()
-    db.session.delete(client)
-    new_client = create_client(client.name, client._redirect_uris)
+    client = create_client_credentials(client)
     db.session.commit()
-    return create_credentials_response(new_client)
+    return create_credentials_response(client)
 
 
 def create_credentials_response(client):

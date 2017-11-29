@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
+import json
 
-from ...extensions import db, oauth
+from ...extensions import db, oauth, store
 from ...models import Token
+from ..users.service import generate_jwt
 
 
 @oauth.tokengetter
@@ -16,10 +18,12 @@ def load_token(access_token=None, refresh_token=None):
 def save_token(token, request, *args, **kwargs):
     expires_in = token.pop('expires_in')
     expires = datetime.utcnow() + timedelta(seconds=expires_in)
+    if 'refresh_token' not in token:
+        token['refresh_token'] = ''
 
     token_obj = Token(
         access_token=token['access_token'],
-        refresh_token=token['refresh_token'],
+        #refresh_token=token['refresh_token'],
         token_type=token['token_type'],
         _scopes=token['scope'],
         expires=expires,
@@ -28,6 +32,10 @@ def save_token(token, request, *args, **kwargs):
     )
     db.session.add(token_obj)
     db.session.commit()
+
+    store.put(token_obj.access_token, json.dumps({
+        'jwt':str(generate_jwt(request.user)),
+        'expires': str(expires)}))
     return token_obj
 
 
@@ -36,5 +44,6 @@ def remove_expired_tokens():
         Token.expires < datetime.utcnow()).all()
 
     for token in tokens:
+        store.delete(token.access_token)
         db.session.delete(token)
         db.session.commit()
